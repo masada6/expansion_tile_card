@@ -275,7 +275,6 @@ class ExpansionTileCardState extends State<ExpansionTileCard>
   }
 
   void toggleExpansion() {
-    _setExpansion(!_isExpanded);
   }
 
   Widget _buildChildren(BuildContext context, Widget? child) {
