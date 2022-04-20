@@ -34,6 +34,7 @@ class ExpansionTileCard extends StatefulWidget {
     Key? key,
     this.leading,
     required this.title,
+    this.isExpandable = false,
     this.subtitle,
     this.onExpansionChanged,
     this.children = const <Widget>[],
@@ -180,14 +181,17 @@ class ExpansionTileCard extends StatefulWidget {
   /// Defaults to Curves.easeIn.
   final Curve paddingCurve;
 
+  /// Sets whether this widget expands on touch
+  ///
+  /// Defaults to false
+  final bool isExpandable;
+
   @override
   ExpansionTileCardState createState() => ExpansionTileCardState();
 }
 
-class ExpansionTileCardState extends State<ExpansionTileCard>
-    with SingleTickerProviderStateMixin {
-  static final Animatable<double> _halfTween =
-      Tween<double>(begin: 0.0, end: 0.5);
+class ExpansionTileCardState extends State<ExpansionTileCard> with SingleTickerProviderStateMixin {
+  static final Animatable<double> _halfTween = Tween<double>(begin: 0.0, end: 0.5);
 
   final ColorTween _headerColorTween = ColorTween();
   final ColorTween _iconColorTween = ColorTween();
@@ -209,6 +213,7 @@ class ExpansionTileCardState extends State<ExpansionTileCard>
   late Animation<EdgeInsets> _padding;
 
   bool _isExpanded = false;
+  late bool _isExpandable;
 
   @override
   void initState() {
@@ -229,13 +234,11 @@ class ExpansionTileCardState extends State<ExpansionTileCard>
     _headerColor = _controller.drive(_headerColorTween.chain(_colorTween));
     _materialColor = _controller.drive(_materialColorTween.chain(_colorTween));
     _iconColor = _controller.drive(_iconColorTween.chain(_colorTween));
-    _elevation = _controller.drive(
-        Tween<double>(begin: widget.initialElevation, end: widget.elevation)
-            .chain(_elevationTween));
+    _elevation = _controller.drive(Tween<double>(begin: widget.initialElevation, end: widget.elevation).chain(_elevationTween));
     _padding = _controller.drive(_edgeInsetsTween.chain(_paddingTween));
-    _isExpanded = PageStorage.of(context)?.readState(context) as bool? ??
-        widget.initiallyExpanded;
+    _isExpanded = PageStorage.of(context)?.readState(context) as bool? ?? widget.initiallyExpanded;
     if (_isExpanded) _controller.value = 1.0;
+    _isExpandable = widget.isExpandable;
   }
 
   @override
@@ -261,8 +264,9 @@ class ExpansionTileCardState extends State<ExpansionTileCard>
         }
         PageStorage.of(context)?.writeState(context, _isExpanded);
       });
-      if (widget.onExpansionChanged != null)
+      if (widget.onExpansionChanged != null) {
         widget.onExpansionChanged!(_isExpanded);
+      }
     }
   }
 
@@ -275,6 +279,9 @@ class ExpansionTileCardState extends State<ExpansionTileCard>
   }
 
   void toggleExpansion() {
+    if (_isExpandable) {
+      _setExpansion(!_isExpanded);
+    }
   }
 
   Widget _buildChildren(BuildContext context, Widget? child) {
@@ -286,43 +293,38 @@ class ExpansionTileCardState extends State<ExpansionTileCard>
         borderRadius: widget.borderRadius,
         elevation: _elevation.value,
         shadowColor: widget.shadowColor,
-        child: Container(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              InkWell(
-                customBorder:
-                    RoundedRectangleBorder(borderRadius: widget.borderRadius),
-                onTap: toggleExpansion,
-                child: ListTileTheme.merge(
-                  iconColor: _iconColor.value,
-                  textColor: _headerColor.value,
-                  child: Padding(
-                    padding: const EdgeInsets.all(2.0),
-                    child: ListTile(
-                      isThreeLine: widget.isThreeLine,
-                      contentPadding: widget.contentPadding,
-                      leading: widget.leading,
-                      title: widget.title,
-                      subtitle: widget.subtitle,
-                      trailing: RotationTransition(
-                        turns: widget.trailing == null || widget.animateTrailing
-                            ? _iconTurns
-                            : AlwaysStoppedAnimation(0),
-                        child: widget.trailing ?? Icon(Icons.expand_more),
-                      ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            InkWell(
+              customBorder: RoundedRectangleBorder(borderRadius: widget.borderRadius),
+              onTap: toggleExpansion,
+              child: ListTileTheme.merge(
+                iconColor: _iconColor.value,
+                textColor: _headerColor.value,
+                child: Padding(
+                  padding: const EdgeInsets.all(2.0),
+                  child: ListTile(
+                    isThreeLine: widget.isThreeLine,
+                    contentPadding: widget.contentPadding,
+                    leading: widget.leading,
+                    title: widget.title,
+                    subtitle: widget.subtitle,
+                    trailing: RotationTransition(
+                      turns: widget.trailing == null || widget.animateTrailing ? _iconTurns : const AlwaysStoppedAnimation(0),
+                      child: widget.trailing ?? const Icon(Icons.expand_more),
                     ),
                   ),
                 ),
               ),
-              ClipRect(
-                child: Align(
-                  heightFactor: _heightFactor.value,
-                  child: child,
-                ),
+            ),
+            ClipRect(
+              child: Align(
+                heightFactor: _heightFactor.value,
+                child: child,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -333,10 +335,10 @@ class ExpansionTileCardState extends State<ExpansionTileCard>
     final ThemeData theme = Theme.of(context);
     _headerColorTween
       ..begin = theme.textTheme.subtitle1!.color
-      ..end = widget.expandedTextColor ?? theme.accentColor;
+      ..end = widget.expandedTextColor ?? theme.colorScheme.secondary;
     _iconColorTween
       ..begin = theme.unselectedWidgetColor
-      ..end = widget.expandedTextColor ?? theme.accentColor;
+      ..end = widget.expandedTextColor ?? theme.colorScheme.secondary;
     _materialColorTween
       ..begin = widget.baseColor ?? theme.canvasColor
       ..end = widget.expandedColor ?? theme.cardColor;
